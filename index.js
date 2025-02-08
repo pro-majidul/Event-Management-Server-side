@@ -32,6 +32,13 @@ async function run() {
     const userCollection = client.db('eventDB').collection('users')
     const eventCollection = client.db('eventDB').collection('events')
 
+
+    app.post('/jwt', async (req, res) => {
+      const data = req.body;
+      const token = jwt.sign(data, process.env.Secure_Web_Token, { expiresIn: '7h' })
+      res.send({ token })
+    })
+    
     // user related APIs
     app.post('/users', async (req, res) => {
       const data = req.body;
@@ -58,7 +65,7 @@ async function run() {
     // guest login
     app.post('/guest-login', async (req, res) => {
       const guestUser = {
-        id: 'guest_' + Date.now(),
+        email: 'guest_' + Date.now() + '@gmail.com',
         role: 'guest',
       };
       const token = jwt.sign(guestUser, process.env.Secure_Web_Token, { expiresIn: '7h' })
