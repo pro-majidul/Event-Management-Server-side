@@ -24,6 +24,25 @@ const client = new MongoClient(uri, {
   }
 });
 
+//jwt  Verification Midleware
+
+const verification = (req, res, next) => {
+  if (!req.headers.Authorization) {
+    return res.status(401).send({ message: 'Unauthorize Access' })
+  }
+
+  const token = req.headers.Authorization.split(' ')[1];
+  jwt.verify(token, process.env.Secure_Web_Token, (err, dec) => {
+    if (err) {
+      return res.status(401).send({ message: 'Unauthorize Access' })
+    }
+    req.user = dec;
+    next()
+
+  })
+
+}
+
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
@@ -38,7 +57,7 @@ async function run() {
       const token = jwt.sign(data, process.env.Secure_Web_Token, { expiresIn: '7h' })
       res.send({ token })
     })
-    
+
     // user related APIs
     app.post('/users', async (req, res) => {
       const data = req.body;
@@ -65,7 +84,7 @@ async function run() {
     // guest login
     app.post('/guest-login', async (req, res) => {
       const guestUser = {
-        email: 'guest_' + Date.now() + '@gmail.com',
+        email: 'guest@gmail.com',
         role: 'guest',
       };
       const token = jwt.sign(guestUser, process.env.Secure_Web_Token, { expiresIn: '7h' })
@@ -74,8 +93,11 @@ async function run() {
 
     // Events related APIs
 
-    app.post('/events', async (req, res) => {
+    app.post('/events', verification, async (req, res) => {
       const data = req.body;
+      if (data.email === 'guest@gmail.com') {
+        return res.status(403).send({ message: 'forbidden Access Guest cannot create event' })
+      }
       const result = await eventCollection.insertOne(data);
       res.send(result)
     })
@@ -85,10 +107,13 @@ async function run() {
       res.send(data)
     })
 
-    app.get('/events/:email', async (req, res) => {
+    app.get('/events/:email', verification, async (req, res) => {
       const email = req.params.email;
+      if (email === 'guest@gmail.com') {
+        return res.status(403).send({ message: 'forbidden Access Guest cannot create event' })
+      }
       const query = { email: email }
-      const result = await eventCollection.findOne(query);
+      const result = await eventCollection.find(query).toArray();
       res.send(result)
     })
     app.patch('/events/:id', async (req, res) => {
